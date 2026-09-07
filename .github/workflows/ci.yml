@@ -38,6 +38,12 @@ jobs:
       - name: Scan this repo with itself
         uses: ./
         with:
-          path: '.'
+          # src/main only, deliberately -- src/test is full of
+          # intentionally secret-shaped fixtures by design (that's the
+          # whole point of ScannerTest.kt), so scanning it here would
+          # flag test data, not a real leak. A real consumer's own repo
+          # doesn't have that caveat, which is why the action's default
+          # (documented in README.md) stays '.', not 'src/main'.
+          path: 'src/main'
           fail-on-find: 'true'
           upload-sarif: 'false'

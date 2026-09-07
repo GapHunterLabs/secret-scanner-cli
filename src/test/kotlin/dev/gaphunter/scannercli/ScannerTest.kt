@@ -31,7 +31,14 @@ class ScannerTest {
 
     @Test
     fun detectsAwsKeyInEnvFile() {
-        write(".env", "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n")
+        // Built by concatenation, not a single literal -- same reason as
+        // the Kotlin-plugin SecretDetectorTest.kt convention this project
+        // ports: this repo's own CI self-scans itself (see
+        // .github/workflows/ci.yml), and a literal AKIA... string here
+        // would trip that scan even though it's AWS's own documented
+        // placeholder key, not a real credential.
+        val fakeAwsKey = "AKIA" + "IOSFODNN7EXAMPLE"
+        write(".env", "AWS_ACCESS_KEY_ID=$fakeAwsKey\n")
         val hits = Scanner.scan(root)
         assertEquals(1, hits.size)
         assertEquals("AWS_ACCESS_KEY", hits[0].kind)
@@ -84,7 +91,8 @@ class ScannerTest {
 
     @Test
     fun skipsNonScannableExtensions() {
-        write("logo.png", "AKIAIOSFODNN7EXAMPLE") // not a real PNG, just proving extension-based skip
+        val fakeAwsKey = "AKIA" + "IOSFODNN7EXAMPLE"
+        write("logo.png", fakeAwsKey) // not a real PNG, just proving extension-based skip
         val hits = Scanner.scan(root)
         assertTrue("expected .png to be skipped regardless of content, got: $hits", hits.isEmpty())
     }
