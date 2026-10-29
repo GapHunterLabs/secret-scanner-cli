@@ -46,4 +46,4 @@ noted in the project's release notes.
 
 ## Contact
 
-Questions about this policy: **gaphunterlabs@gmail.com**
+Questions about this policy: **contact@gaphunterlabs.com**
