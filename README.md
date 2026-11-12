@@ -1,22 +1,22 @@
 # secret-scanner-cli
 
-Local, offline secret scanning from the command line or a GitHub Action
-— no IDE required. Detects hardcoded AWS/GitHub/Slack/Stripe keys, JWTs,
+Local, offline secret scanning from the command line or a GitHub Action:
+no IDE required. Detects hardcoded AWS/GitHub/Slack/Stripe keys, JWTs,
 and PEM private keys by format, plus a variable-name + Shannon-entropy
 heuristic for everything else that looks like a real credential
 assigned to a suspiciously-named field.
 
 **Status: v0.1, early.** Built as a companion channel to Gap Hunter
 Labs' [api-security-companion](https://github.com/GapHunterLabs/api-security-companion)
-IntelliJ plugin — same detection rules
+IntelliJ plugin: same detection rules
 ([`SecretDetector.kt`](src/main/kotlin/dev/gaphunter/scannercli/SecretDetector.kt)
-is a manual, deliberate port, not a shared module — see the file header
+is a manual, deliberate port, not a shared module; see the file header
 for why), packaged for teams that don't use a JetBrains IDE, or want the
 check in CI rather than (or in addition to) the editor.
 
 ## Why a manual port instead of one shared module?
 
-This project and the IntelliJ plugin build independently — one is a
+This project and the IntelliJ plugin build independently: one is a
 plain JVM app, the other depends on the IntelliJ Platform Gradle
 plugin. Sharing `SecretDetector.kt` as a real Gradle module was possible
 but not done for v0.1; keeping two copies in sync by hand is a known,
@@ -86,37 +86,45 @@ jobs:
 
 Inputs: `path` (default `.`), `fail-on-find` (default `true`),
 `upload-sarif` (default `true`, uploads to GitHub Code Scanning via
-`github/codeql-action/upload-sarif` — needs `security-events: write`
+`github/codeql-action/upload-sarif`, which needs `security-events: write`
 and Code Scanning available on the repo; public repos have this free,
 private repos need GitHub Advanced Security). Outputs: `finding-count`,
 `sarif-file`.
 
 **Known limitation, honestly noted:** the action builds this project
 from source on every run (see [`action.yml`](action.yml)) rather than
-downloading a pre-built release jar — simple for v0.1, but it costs
+downloading a pre-built release jar: simple for v0.1, but it costs
 every consumer a Gradle build. Publishing tagged release jars and
 switching the action to download one is a real follow-up, not done
 yet. The action itself has been reviewed against GitHub Actions'
 documented composite-action behavior but has **not yet been run in a
-live GitHub Actions workflow** — treat it as unverified in that
+live GitHub Actions workflow**; treat it as unverified in that
 specific environment until it has.
 
 ## What this tool is not
 
-It's a coarse, regex-based scanner — not a real per-language parser.
+It's a coarse, regex-based scanner, not a real per-language parser.
 Known blind spots: multi-line string values aren't matched, and a
 value split across string concatenation (`"AKIA" + "IOSF..."`) won't
 be caught either (the same is true of the IntelliJ plugin's
-PSI-based version, for what it's worth — concatenation defeats both).
+PSI-based version, for what it's worth: concatenation defeats both).
 It's meant to catch the common, careless case cheaply, not to replace
 a dedicated secret-scanning product for anything security-critical.
 
 ## Privacy
 
-See [PRIVACY.md](PRIVACY.md) — short version: this tool makes zero
+See [PRIVACY.md](PRIVACY.md). Short version: this tool makes zero
 network calls, reads only the files you point it at, and sends
 nothing anywhere.
 
+## Support this project
+
+If this tool saved you time, a star on GitHub helps other developers find it: https://github.com/GapHunterLabs/secret-scanner-cli
+
+If you want to help keep it free and maintained, you can buy me a coffee:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/gaphunterl1)
+
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0. See [LICENSE](LICENSE).
