@@ -10,6 +10,8 @@ private data class Args(
     val format: String,
     val outFile: File?,
     val failOnFind: Boolean,
+    val bannerFlag: Boolean,
+    val noBannerFlag: Boolean,
 )
 
 fun main(rawArgs: Array<String>) {
@@ -18,6 +20,12 @@ fun main(rawArgs: Array<String>) {
     if (!args.path.exists()) {
         System.err.println("secret-scanner-cli: path not found: ${args.path}")
         exitProcess(2)
+    }
+
+    val machineReadable = args.format == "sarif" || args.outFile != null
+    if (Banner.shouldShow(args.bannerFlag, args.noBannerFlag, System.console() != null, machineReadable)) {
+        println(Banner.TEXT)
+        println()
     }
 
     val hits = Scanner.scan(args.path)
@@ -42,6 +50,8 @@ private fun parseArgs(rawArgs: Array<String>): Args? {
     var format = "text"
     var outFile: File? = null
     var failOnFind = true
+    var bannerFlag = false
+    var noBannerFlag = false
 
     var i = 0
     while (i < rawArgs.size) {
@@ -52,8 +62,17 @@ private fun parseArgs(rawArgs: Array<String>): Args? {
             }
             "--out" -> outFile = File(rawArgs.getOrNull(++i) ?: usageError("--out needs a file path"))
             "--no-fail" -> failOnFind = false
+            "--banner" -> bannerFlag = true
+            "--no-banner" -> noBannerFlag = true
             "--version" -> { println("secret-scanner-cli $VERSION"); return null }
-            "-h", "--help" -> { printHelp(); return null }
+            "-h", "--help" -> {
+                if (Banner.shouldShow(bannerFlag, noBannerFlag, System.console() != null, machineReadable = false)) {
+                    println(Banner.TEXT)
+                    println()
+                }
+                printHelp()
+                return null
+            }
             else -> {
                 if (arg.startsWith("-")) usageError("unknown flag '$arg'")
                 path = File(arg)
@@ -61,7 +80,8 @@ private fun parseArgs(rawArgs: Array<String>): Args? {
         }
         i++
     }
-    return Args(path, format, outFile, failOnFind)
+    if (bannerFlag && noBannerFlag) usageError("--banner and --no-banner are mutually exclusive")
+    return Args(path, format, outFile, failOnFind, bannerFlag, noBannerFlag)
 }
 
 private fun usageError(message: String): Nothing {
@@ -82,8 +102,14 @@ private fun printHelp() {
           --format <fmt>    Output format: text (default) or sarif
           --out <file>      Write output to a file instead of stdout
           --no-fail         Always exit 0, even if findings are reported
+          --banner          Always print the startup banner (even piped or sarif)
+          --no-banner       Never print the startup banner
           --version         Print version and exit
           -h, --help        Print this help and exit
+
+        The startup banner shows by default only in an interactive terminal with
+        --format text and no --out: never when the output is piped, redirected, or
+        meant for a script or CI to parse.
 
         Exit codes: 0 = no findings (or --no-fail), 1 = findings reported, 2 = usage/path error.
         """.trimIndent()
