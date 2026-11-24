@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "dev.gaphunter.scannercli"
-version = "0.1.0"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -20,6 +20,11 @@ dependencies {
 
 tasks.test {
     useJUnit()
+    // The stress suite (StressTest) runs only with `./gradlew test -Pstress`; without this line the
+    // property never reached the tests and every stress test was skipped while the run stayed green.
+    systemProperty("scanner.stress", project.hasProperty("stress").toString())
+    // A fixed heap so the stress numbers (time and peak memory) compare between machines and runs.
+    maxHeapSize = "512m"
 }
 
 // Deliberately NOT applying the `application` plugin: this project only
@@ -34,7 +39,7 @@ tasks.test {
 // its own manifest below, sidestepping that whole integration surface.
 //
 // The default `jar` task is disabled on purpose. With shadowJar's
-// archiveClassifier set to "" (for a clean `secret-scanner-cli-0.1.0.jar`
+// archiveClassifier set to "" (for a clean `secret-scanner-cli-0.2.0.jar`
 // name), the thin `jar` task would otherwise write to that SAME path --
 // whichever task ran last would win, and when the thin jar won the
 // result was a stdlib-less jar that died at runtime with
