@@ -20,6 +20,11 @@ dependencies {
 
 tasks.test {
     useJUnit()
+    // The stress suite (StressTest) runs only with `./gradlew test -Pstress`; without this line the
+    // property never reached the tests and every stress test was skipped while the run stayed green.
+    systemProperty("scanner.stress", project.hasProperty("stress").toString())
+    // A fixed heap so the stress numbers (time and peak memory) compare between machines and runs.
+    maxHeapSize = "512m"
 }
 
 // Deliberately NOT applying the `application` plugin: this project only

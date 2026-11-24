@@ -1,18 +1,33 @@
 # secret-scanner-cli
 
 Local, offline secret scanning from the command line or a GitHub Action:
-no IDE required. Detects hardcoded AWS/GitHub/Slack/Stripe keys, JWTs,
-and PEM private keys by format, plus a variable-name + Shannon-entropy
-heuristic for everything else that looks like a real credential
-assigned to a suspiciously-named field.
+no IDE required. Detects 22 credential formats by their exact shape
+(AWS, GitHub classic and fine-grained, GitLab, Slack tokens and webhooks,
+Stripe, OpenAI, Anthropic, Hugging Face, Groq, Perplexity, Google, npm,
+PyPI, SendGrid, Shopify, DigitalOcean, Databricks, HashiCorp Vault, JWTs
+and PEM private keys), plus a name + Shannon-entropy check for a real
+credential assigned to a credential-named key.
+
+The name + entropy check is the strict one: the key's last word has to
+be the credential noun (`api_token`, `DB_PASSWORD`; not `token_url` or
+`secretName`), and references (`${VAR}`, `%VAR%`, `{{ secrets.X }}`),
+paths, URLs without credentials, sentences and slugs are not reported.
+In template and generated files (`*.example`, `*.sample`, lockfiles) only
+the exact formats are checked. On four of my own repositories it cut the
+name + entropy findings from 75 to 0, 3 to 1, and 227 to 147 (the rest
+are cryptography test vectors in a vendored Go toolchain), while the
+exact-format findings stayed the same.
 
 **Status: v0.1, early.** Built as a companion channel to Gap Hunter
 Labs' [api-security-companion](https://github.com/GapHunterLabs/api-security-companion)
-IntelliJ plugin: same detection rules
+IntelliJ plugin: its detection rules
 ([`SecretDetector.kt`](src/main/kotlin/dev/gaphunter/scannercli/SecretDetector.kt)
 is a manual, deliberate port, not a shared module; see the file header
 for why), packaged for teams that don't use a JetBrains IDE, or want the
-check in CI rather than (or in addition to) the editor.
+check in CI rather than (or in addition to) the editor. This copy differs
+from the plugin's on purpose in one place: a JWT has to start where the
+previous character isn't a base64url character, which keeps a long
+`-eyJ-eyJ...` line linear.
 
 ## Why a manual port instead of one shared module?
 
@@ -39,7 +54,7 @@ java -jar build/libs/secret-scanner-cli-0.1.0.jar --help
 ```bash
 java -jar secret-scanner-cli-0.1.0.jar [path] [options]
 
-  path              Directory to scan (default: current directory)
+  path              Directory or single file to scan (default: current directory)
   --format <fmt>    Output format: text (default) or sarif
   --out <file>      Write output to a file instead of stdout
   --no-fail         Always exit 0, even if findings are reported
@@ -97,15 +112,26 @@ and Code Scanning available on the repo; public repos have this free,
 private repos need GitHub Advanced Security). Outputs: `finding-count`,
 `sarif-file`.
 
+File paths in the SARIF report are relative to the directory the job runs
+in (the repository root on GitHub Actions), so `path: src` reports
+`src/Config.kt` and Code Scanning finds the file. A path outside that
+directory is reported relative to the scanned folder; no absolute path is
+ever written into the report.
+
 **Known limitation, honestly noted:** the action builds this project
 from source on every run (see [`action.yml`](action.yml)) rather than
 downloading a pre-built release jar: simple for v0.1, but it costs
 every consumer a Gradle build. Publishing tagged release jars and
 switching the action to download one is a real follow-up, not done
-yet. The action itself has been reviewed against GitHub Actions'
-documented composite-action behavior but has **not yet been run in a
-live GitHub Actions workflow**; treat it as unverified in that
-specific environment until it has.
+yet. The action runs on every push to `main` in this repository's own
+CI (the `self-scan` job scans `src/main` with `uses: ./`), so the build
+and scan steps have run in real GitHub Actions workflows. That job uses
+`upload-sarif: 'false'` and finds nothing, so two paths have **not yet
+run live**: the SARIF upload to Code Scanning and a run that fails on
+findings. Treat those two as unverified until they have.
+
+How I test the tool, including the negative and stress suites, is in
+[docs/TESTING.md](docs/TESTING.md).
 
 ## What this tool is not
 

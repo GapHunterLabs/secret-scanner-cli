@@ -1,0 +1,8 @@
+deploy:
+  image: "registry.example.com/app:1.2.3"
+  jwt_sample: "{{JWT}}"
+  slack_bot: "{{SLACK}}"
+  private_key: |
+    {{PEM_HEADER}}
+    MIIFAKEFAKEFAKEKEYDATAFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEF
+    -----END RSA PRIVATE KEY-----

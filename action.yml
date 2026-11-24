@@ -1,5 +1,5 @@
 name: 'Gap Hunter Labs Secret Scanner'
-description: 'Local, offline secret scanning (AWS/GitHub/Slack/JWT/PEM/Stripe signatures + entropy heuristic) with SARIF output for GitHub code scanning. Same detection engine as api-security-companion, no network calls.'
+description: 'Local, offline secret scanning (AWS/GitHub/Slack/JWT/PEM/Stripe signatures + entropy heuristic) with SARIF output for GitHub code scanning. Detection rules ported from api-security-companion, no network calls.'
 author: 'Gap Hunter Labs'
 branding:
   icon: 'shield'
@@ -44,27 +44,44 @@ runs:
       # A real release pipeline (tag -> build -> attach jar to a GitHub
       # Release -> this step downloads it instead) is a known follow-up,
       # not done yet: it would save every consumer this Gradle build.
+      env:
+        ACTION_PATH: ${{ github.action_path }}
       run: |
-        cd "${{ github.action_path }}"
+        cd "$ACTION_PATH"
         chmod +x ./gradlew
         ./gradlew shadowJar --console=plain -q
 
     - name: Run scan
       id: scan
       shell: bash
+      # Inputs reach the script through environment variables, never through
+      # `${{ }}` expansion inside the script text: an expanded value is pasted
+      # into the script before bash parses it, so a path containing `"` or
+      # `$(...)` would have run as shell code.
+      env:
+        SCAN_PATH: ${{ inputs.path }}
+        FAIL_ON_FIND: ${{ inputs.fail-on-find }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         set -eo pipefail
-        JAR=$(ls "${{ github.action_path }}"/build/libs/secret-scanner-cli-*.jar | head -n1)
+        # Anything other than true/false (any case) fails the step instead of
+        # quietly meaning "do not fail", which is what 'True' or 'yes' did.
+        case "$(printf '%s' "$FAIL_ON_FIND" | tr '[:upper:]' '[:lower:]')" in
+          true) FAIL=1 ;;
+          false) FAIL=0 ;;
+          *) echo "::error::fail-on-find must be 'true' or 'false', got '$FAIL_ON_FIND'"; exit 2 ;;
+        esac
+        JAR=$(ls "$ACTION_PATH"/build/libs/secret-scanner-cli-*.jar | head -n1)
         SARIF_PATH="secret-scanner-results.sarif"
-        java -jar "$JAR" "${{ inputs.path }}" --format sarif --out "$SARIF_PATH" --no-fail
+        java -jar "$JAR" "$SCAN_PATH" --format sarif --out "$SARIF_PATH" --no-fail
         COUNT=$(jq '.runs[0].results | length' "$SARIF_PATH")
         echo "finding-count=$COUNT" >> "$GITHUB_OUTPUT"
         echo "sarif-file=$SARIF_PATH" >> "$GITHUB_OUTPUT"
-        echo "secret-scanner-cli: $COUNT finding(s) in ${{ inputs.path }}"
+        echo "secret-scanner-cli: $COUNT finding(s) in $SCAN_PATH"
         if [ "$COUNT" -gt 0 ]; then
-          java -jar "$JAR" "${{ inputs.path }}" --no-fail
+          java -jar "$JAR" "$SCAN_PATH" --no-fail
         fi
-        if [ "$COUNT" -gt 0 ] && [ "${{ inputs.fail-on-find }}" = "true" ]; then
+        if [ "$COUNT" -gt 0 ] && [ "$FAIL" = "1" ]; then
           echo "::error::secret-scanner-cli found $COUNT potential secret(s) -- see the log above or the uploaded SARIF report."
           exit 1
         fi

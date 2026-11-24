@@ -1,4 +1,4 @@
-# Privacy Policy — secret-scanner-cli
+# Privacy Policy: secret-scanner-cli
 
 **Effective date:** 2026-09-06
 
@@ -9,14 +9,14 @@ disclose beyond what's below.
 ## What this tool collects
 
 **Nothing.** secret-scanner-cli does not collect, store, transmit, or
-sell any data — no source code, no file contents, no usage analytics,
+sell any data: no source code, no file contents, no usage analytics,
 no telemetry, no crash reports, no personally identifiable information.
 
 ## What it reads
 
 It reads the text files under whatever path you point it at (default:
 the current directory), to look for hardcoded secrets. That's the
-tool's whole job — nothing is read that you didn't ask it to scan, and
+tool's whole job. Nothing is read that you didn't ask it to scan, and
 nothing read is written anywhere except the report you asked for
 (stdout, or the file passed to `--out`).
 
@@ -29,14 +29,14 @@ on disk. Nothing you scan is ever sent anywhere.
 When run as the GitHub Action in this repository, the surrounding CI
 job does its own network activity (checking out your repo, downloading
 the JDK, optionally uploading the SARIF report to GitHub Code Scanning
-if `upload-sarif: true`) — that's GitHub Actions infrastructure and the
+if `upload-sarif: true`). That's GitHub Actions infrastructure and the
 `upload-sarif` step you opted into, not this tool phoning home.
 
 ## Third parties
 
 None inside the tool itself. The optional `upload-sarif` step in
 `action.yml` uses `github/codeql-action/upload-sarif`, GitHub's own
-first-party action — disable it (`upload-sarif: false`) if you don't
+first-party action. Disable it (`upload-sarif: false`) if you don't
 want that upload to happen.
 
 ## Changes to this policy
