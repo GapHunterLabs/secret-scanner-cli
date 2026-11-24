@@ -46,13 +46,13 @@ Requires JDK 21.
 git clone https://github.com/GapHunterLabs/secret-scanner-cli.git
 cd secret-scanner-cli
 ./gradlew shadowJar
-java -jar build/libs/secret-scanner-cli-0.1.0.jar --help
+java -jar build/libs/secret-scanner-cli-0.2.0.jar --help
 ```
 
 ## Usage
 
 ```bash
-java -jar secret-scanner-cli-0.1.0.jar [path] [options]
+java -jar secret-scanner-cli-0.2.0.jar [path] [options]
 
   path              Directory or single file to scan (default: current directory)
   --format <fmt>    Output format: text (default) or sarif
@@ -60,6 +60,9 @@ java -jar secret-scanner-cli-0.1.0.jar [path] [options]
   --no-fail         Always exit 0, even if findings are reported
   --banner          Always print the startup banner (even piped or sarif)
   --no-banner       Never print the startup banner
+  --follow-external-links
+                    Also scan through links (symlinks, junctions) that lead
+                    outside the scanned folder; not followed by default since 0.2.0
   --version         Print version and exit
   -h, --help        Print this help and exit
 
@@ -70,10 +73,22 @@ meant for a script or CI to parse (so a GitHub Action run never sees it).
 Exit codes: 0 = no findings (or --no-fail), 1 = findings reported, 2 = usage/path error.
 ```
 
+### Links that leave the scanned folder (changed in 0.2.0)
+
+Since 0.2.0, a symlink or Windows junction whose real path is outside the
+folder you scan is not followed. A link committed in a pull request (to
+`/etc`, or to a home directory) would otherwise make a CI scan read and
+report files that are not part of the repository. Each link left out is
+named on stderr by its path inside the tree, never by its target, so
+`--format sarif` on stdout stays a valid report. Links that stay inside
+the folder are followed as before, and each real directory is read once.
+Version 0.1.0 followed every link; `--follow-external-links` brings that
+back.
+
 Example:
 
 ```bash
-$ java -jar secret-scanner-cli-0.1.0.jar ./my-repo
+$ java -jar secret-scanner-cli-0.2.0.jar ./my-repo
 my-repo/.env:1:19: [AWS_ACCESS_KEY] Looks like an AWS access key ID (AKIAIOSF...)
 
 secret-scanner-cli: 1 finding(s) in ./my-repo

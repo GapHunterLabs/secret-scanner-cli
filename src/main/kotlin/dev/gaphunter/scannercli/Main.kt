@@ -4,7 +4,7 @@ import java.io.File
 import java.io.PrintStream
 import kotlin.system.exitProcess
 
-private const val VERSION = "0.1.0"
+private const val VERSION = "0.2.0"
 
 private data class Args(
     val path: File,
@@ -13,6 +13,7 @@ private data class Args(
     val failOnFind: Boolean,
     val bannerFlag: Boolean,
     val noBannerFlag: Boolean,
+    val followExternalLinks: Boolean,
 )
 
 /** Thrown to end a run with an exit code; caught only by [cliMain]. */
@@ -56,7 +57,10 @@ private fun execute(rawArgs: Array<String>, io: Io): Int {
         io.out.println()
     }
 
-    val hits = Scanner.scan(args.path)
+    val hits = Scanner.scan(args.path, args.followExternalLinks) { link ->
+        // stderr, never stdout: `--format sarif > out.sarif` keeps a valid report.
+        io.err.println("secret-scanner-cli: skipped a link that leads outside the scanned folder: $link (--follow-external-links scans it)")
+    }
     val output = when (args.format) {
         "sarif" -> renderSarif(hits, sarifUriPrefix(args.path, File("").absoluteFile))
         else -> renderText(hits, args.path)
@@ -82,6 +86,7 @@ private fun parseArgs(rawArgs: Array<String>, io: Io): Args? {
     var failOnFind = true
     var bannerFlag = false
     var noBannerFlag = false
+    var followExternalLinks = false
     var pathSeen = false
 
     var i = 0
@@ -101,6 +106,7 @@ private fun parseArgs(rawArgs: Array<String>, io: Io): Args? {
             "--no-fail" -> failOnFind = false
             "--banner" -> bannerFlag = true
             "--no-banner" -> noBannerFlag = true
+            "--follow-external-links" -> followExternalLinks = true
             "--version" -> { io.out.println("secret-scanner-cli $VERSION"); return null }
             "-h", "--help" -> {
                 if (Banner.shouldShow(bannerFlag, noBannerFlag, io.isConsole, machineReadable = false)) {
@@ -121,7 +127,7 @@ private fun parseArgs(rawArgs: Array<String>, io: Io): Args? {
         i++
     }
     if (bannerFlag && noBannerFlag) usageError(io, "--banner and --no-banner are mutually exclusive")
-    return Args(path, format, outFile, failOnFind, bannerFlag, noBannerFlag)
+    return Args(path, format, outFile, failOnFind, bannerFlag, noBannerFlag, followExternalLinks)
 }
 
 /** Why [out] can't be written, or null when it looks writable. Pure, so it is tested without a process exit. */
@@ -159,6 +165,9 @@ private fun printHelp(stream: PrintStream) {
           --no-fail         Always exit 0, even if findings are reported
           --banner          Always print the startup banner (even piped or sarif)
           --no-banner       Never print the startup banner
+          --follow-external-links
+                            Also scan through links (symlinks, junctions) that lead
+                            outside the scanned folder; not followed by default since 0.2.0
           --version         Print version and exit
           -h, --help        Print this help and exit
 

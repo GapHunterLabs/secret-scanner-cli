@@ -1,6 +1,8 @@
 package dev.gaphunter.scannercli
 
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
 
 data class ScanHit(
     val file: String,
@@ -85,7 +87,15 @@ object Scanner {
         return listOf(unquoted.groupValues[1] to value)
     }
 
-    fun scan(root: File): List<ScanHit> {
+    /**
+     * Scans [root]. A directory or file link whose real path leads outside
+     * [root] is not followed unless [followExternalLinks]: a symlink to `/etc`
+     * or to a home directory, committed in a pull request, would otherwise make
+     * a CI scan read (and report from) files that are not part of the repo.
+     * Each link left out goes to [onSkippedLink] by its path inside the tree,
+     * never by its target. Version 0.1.0 followed every link.
+     */
+    fun scan(root: File, followExternalLinks: Boolean = false, onSkippedLink: (String) -> Unit = {}): List<ScanHit> {
         // A single file given on the command line is scanned whatever its
         // extension (the user asked for that file), and reported by its own
         // name: relativeTo(itself) would be the empty string, which made an
@@ -99,14 +109,38 @@ object Scanner {
         // path: measured on Windows, one secret behind a junction loop was
         // reported 32 times. Entering each real directory once ends that.
         val visited = HashSet<String>()
+        val rootReal = realPathOf(root)
+        fun relative(f: File) = f.relativeTo(root).path.replace(File.separatorChar, '/')
+        fun leavesTheRoot(f: File): Boolean = !followExternalLinks && !isWithin(realPathOf(f), rootReal)
         root.walkTopDown()
-            // The root itself is never skipped by name: scanning `build/` or
-            // `vendor/` on purpose used to report "no findings" without
-            // reading a single file, because the root matched SKIP_DIRS.
-            .onEnter { dir -> (dir == root || dir.name !in SKIP_DIRS) && visited.add(realPathOf(dir)) }
+            .onEnter { dir ->
+                // The root itself is never skipped by name: scanning `build/` or
+                // `vendor/` on purpose used to report "no findings" without
+                // reading a single file, because the root matched SKIP_DIRS.
+                if (dir != root && dir.name in SKIP_DIRS) return@onEnter false
+                if (dir != root && leavesTheRoot(dir)) {
+                    onSkippedLink(relative(dir))
+                    return@onEnter false
+                }
+                visited.add(realPathOf(dir))
+            }
             .filter { it.isFile && it.extension.lowercase() in SCAN_EXTENSIONS }
-            .forEach { file -> hits += scanFile(file, file.relativeTo(root).path.replace('\\', '/')) }
+            .filter { file ->
+                // Only a symlinked file can lead elsewhere (a junction is always a
+                // directory), so the real path is resolved for links alone.
+                val leaves = Files.isSymbolicLink(file.toPath()) && leavesTheRoot(file)
+                if (leaves) onSkippedLink(relative(file))
+                !leaves
+            }
+            .forEach { file -> hits += scanFile(file, relative(file)) }
         return hits
+    }
+
+    /** True when [path] is [root] or inside it, compared by path segments (so `/repo2` is not inside `/repo`). */
+    internal fun isWithin(path: String, root: String): Boolean {
+        val p = Paths.get(path)
+        val r = Paths.get(root)
+        return p == r || p.startsWith(r)
     }
 
     private fun realPathOf(dir: File): String =

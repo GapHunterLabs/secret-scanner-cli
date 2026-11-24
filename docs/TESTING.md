@@ -69,5 +69,5 @@ out-of-memory error, not a small slowdown.
   shell syntax. The build step, `actions/setup-java` and the SARIF upload only
   run on GitHub.
 - **The shadow jar.** `./gradlew shadowJar` and then
-  `java -jar build/libs/secret-scanner-cli-0.1.0.jar <dir>` on a filled copy of
+  `java -jar build/libs/secret-scanner-cli-0.2.0.jar <dir>` on a filled copy of
   the demo fixture, in both formats.
