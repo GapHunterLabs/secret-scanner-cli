@@ -39,7 +39,7 @@ data class Config(
 
         fun load(file: File): Config {
             val text = try {
-                file.readText(Charsets.UTF_8).removePrefix("﻿")
+                file.readText(Charsets.UTF_8).removePrefix("\uFEFF")
             } catch (e: java.io.IOException) {
                 throw Invalid("cannot read the configuration file $file: ${e.message}")
             }

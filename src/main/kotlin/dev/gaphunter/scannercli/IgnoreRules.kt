@@ -43,7 +43,7 @@ class IgnoreRules private constructor(private val patterns: List<Pattern>) {
         fun parse(lines: List<String>, origin: String): IgnoreRules {
             val out = mutableListOf<Pattern>()
             lines.forEachIndexed { i, raw ->
-                val line = raw.trimEnd().removePrefix("﻿")
+                val line = raw.trimEnd().removePrefix("\uFEFF")
                 if (line.isBlank() || line.trimStart().startsWith("#")) return@forEachIndexed
                 out += compile(line.trim(), "$origin:${i + 1}")
             }

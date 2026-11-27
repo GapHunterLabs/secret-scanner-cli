@@ -50,8 +50,8 @@ internal fun consoleSafe(value: String): String {
 }
 
 private fun unsafe(c: Char): Boolean =
-    c < ' ' || c in '\u007f'..'\u009f' || c in '‪'..'‮' || c in '⁦'..'⁩' ||
-        c == '‎' || c == '‏' || c == '؜' || c == ' ' || c == ' '
+    c < ' ' || c in '\u007f'..'\u009f' || c in '\u202A'..'\u202E' || c in '\u2066'..'\u2069' ||
+        c == '\u200E' || c == '\u200F' || c == '\u061C' || c == '\u2028' || c == '\u2029'
 
 private val ORDER = compareBy<ScanHit>({ it.file }, { it.line }, { it.column }, { it.kind })
 
@@ -257,7 +257,7 @@ internal fun jsonEscape(value: String): String {
             c == '\n' -> sb.append("\\n")
             c == '\r' -> sb.append("\\r")
             c == '\t' -> sb.append("\\t")
-            c < ' ' || c == ' ' || c == ' ' || c == '\u007f' -> sb.append("\\u%04x".format(c.code))
+            c < ' ' || c == '\u2028' || c == '\u2029' || c == '\u007f' -> sb.append("\\u%04x".format(c.code))
             else -> sb.append(c)
         }
     }
