@@ -22,7 +22,7 @@ class SarifNegativeTest {
     fun everyRuleKindProducesValidJsonWithItsRuleDescription() {
         val kinds = Fake.BY_KIND.keys.toList()
         val sarif = renderSarif(kinds.map { hit("a.kt", it) })
-        assertEquals(kinds, sarifResults(sarif).map { it["ruleId"] })
+        assertEquals(kinds.map { it.toString() }.sorted(), sarifResults(sarif).map { it["ruleId"].toString() }.sorted())
         for (k in kinds) assertFalse("$k has no rule description of its own", sarif.contains("\"text\": \"$k\""))
     }
 
@@ -62,7 +62,8 @@ class SarifNegativeTest {
         )
         for ((file, uri) in cases) assertEquals(file, uri, sarifUri(file))
         val uris = sarifUris(renderSarif(cases.keys.map { hit(it) }))
-        assertEquals(cases.values.toList(), uris)
+        // Results are sorted by path since 0.3.0, so compare as sorted lists.
+        assertEquals(cases.values.sorted(), uris.sorted())
         val uriRef = Regex("""^[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+$""")
         for (u in uris) assertTrue(u, uriRef.matches(u))
     }

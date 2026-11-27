@@ -37,7 +37,7 @@ class ScannerTest {
         // .github/workflows/ci.yml), and a literal AKIA... string here
         // would trip that scan even though it's AWS's own documented
         // placeholder key, not a real credential.
-        val fakeAwsKey = "AKIA" + "IOSFODNN7EXAMPLE"
+        val fakeAwsKey = Fake.AWS
         write(".env", "AWS_ACCESS_KEY_ID=$fakeAwsKey\n")
         val hits = Scanner.scan(root)
         assertEquals(1, hits.size)
@@ -91,7 +91,7 @@ class ScannerTest {
 
     @Test
     fun skipsNonScannableExtensions() {
-        val fakeAwsKey = "AKIA" + "IOSFODNN7EXAMPLE"
+        val fakeAwsKey = Fake.AWS
         write("logo.png", fakeAwsKey) // not a real PNG, just proving extension-based skip
         val hits = Scanner.scan(root)
         assertTrue("expected .png to be skipped regardless of content, got: $hits", hits.isEmpty())

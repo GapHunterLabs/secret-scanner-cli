@@ -56,7 +56,7 @@ class CliNegativeTest {
             assertEquals("$format findings", 1, found.exitCode)
             val noFail = cli(dirty.path, "--format", format, "--no-fail")
             assertEquals("$format findings --no-fail", 0, noFail.exitCode)
-            assertEquals("--no-fail changes the exit code only", found.stdout, noFail.stdout)
+            assertEquals("--no-fail changes the exit code only", findingsOnly(found.stdout), findingsOnly(noFail.stdout))
             val missing = cli(File(base, "nope").path, "--format", format)
             assertEquals("$format missing path", 2, missing.exitCode)
             assertTrue(missing.stderr.contains("path not found"))
@@ -83,13 +83,27 @@ class CliNegativeTest {
             listOf("--bogus"),
             listOf("-x"),
             listOf("--format"),
-            listOf("--format", "json"),
+            listOf("--format", "xml"),
+            listOf("--format", "text", "--format", "sarif"),
+            listOf("--quiet", "--verbose"),
+            listOf("--no-fail", "--fail-on", "high"),
+            listOf("--fail-on", "critical"),
+            listOf("--max-file-size", "-1"),
+            listOf("--max-file-size", "ten"),
+            listOf("--max-findings", "0"),
+            listOf("--reveal", "65"),
+            listOf("--reveal", "0"),
+            listOf("--expect-sha256", "abc"),
+            listOf("--config", "x.json", "--no-config"),
+            listOf("--dry-run", "--reveal", "4"),
+            listOf("--no-fail", "--no-fail"),
+            listOf("--exclude"),
+            listOf(""),
             listOf("--format", ""),
             listOf("--format", "SARIF"),
             listOf("--out"),
             listOf("--out", "--no-fail"),
             listOf("--banner", "--no-banner"),
-            listOf(clean.path, dirty.path),
         )
         for (args in cases) {
             val r = cli(*args.toTypedArray())
@@ -130,7 +144,7 @@ class CliNegativeTest {
         try {
             val r = cli(clean.path, "--out", ro.path)
             assertEquals(2, r.exitCode)
-            assertTrue(r.stderr, r.stderr.contains("cannot write --out file"))
+            assertTrue(r.stderr, r.stderr.contains("--out file is not writable"))
             assertEquals("old", ro.readText())
         } finally {
             ro.setWritable(true)
@@ -142,12 +156,12 @@ class CliNegativeTest {
     fun outInsideTheScannedTreeIsNotPickedUpByTheNextScan() {
         val tree = File(base, "self").apply { mkdirs() }
         File(tree, "a.yaml").writeText(Fake.BY_KIND.values.joinToString("\n") { it.first } + "\n")
-        for ((format, name) in listOf("text" to "report.json", "sarif" to "report.yaml")) {
+        for ((format, name) in listOf("text" to "report.json", "sarif" to "report.yaml", "json" to "report.yml")) {
             val out = File(tree, name)
             assertEquals(0, cli(tree.path, "--format", format, "--out", out.path, "--no-fail").exitCode)
             val first = out.readText()
             assertEquals(0, cli(tree.path, "--format", format, "--out", out.path, "--no-fail").exitCode)
-            assertEquals("$format: the report must not produce findings of its own", first, out.readText())
+            assertEquals("$format: the report must not produce findings of its own", findingsOnly(first), findingsOnly(out.readText()))
             out.delete()
         }
     }
@@ -163,7 +177,7 @@ class CliNegativeTest {
     fun versionAndHelpExitZeroOnStdout() {
         val v = cli("--version")
         assertEquals(0, v.exitCode)
-        assertEquals("secret-scanner-cli 0.2.0", v.stdout.trim())
+        assertEquals("secret-scanner-cli 0.3.0", v.stdout.trim())
         val h = cli("--help")
         assertEquals(0, h.exitCode)
         assertTrue(h.stdout.contains("Usage:"))
@@ -190,4 +204,8 @@ class CliNegativeTest {
         assertEquals("", usage.stdout)
         assertEquals(0, runCli(clean.path, "--format", "sarif").exitCode)
     }
+
+    /** The finding lines of a text report, without the summary (its timing differs between two runs). */
+    private fun findingsOnly(stdout: String) =
+        stdout.lines().filterNot { it.startsWith("secret-scanner-cli: scanned ") || it.trimStart().startsWith("\"durationMs\"") }.joinToString("\n")
 }

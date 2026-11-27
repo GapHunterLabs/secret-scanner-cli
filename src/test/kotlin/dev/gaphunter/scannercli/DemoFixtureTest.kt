@@ -52,7 +52,13 @@ class DemoFixtureTest {
     fun theDemoProjectThroughTheCliInBothFormats() {
         for (format in listOf("text", "sarif")) {
             val out = ByteArrayOutputStream()
-            val code = PrintStream(out, true, "UTF-8").use { cliMain(arrayOf(root.path, "--format", format), it, it, false) }
+            val err = ByteArrayOutputStream()
+            val code = PrintStream(out, true, "UTF-8").use { o ->
+                PrintStream(err, true, "UTF-8").use { e -> cliMain(arrayOf(root.path, "--format", format), o, e, false) }
+            }
+            for (secret in listOf(Fake.AWS, Fake.STRIPE, Fake.GENERIC, Fake.JWT, Fake.SLACK, Fake.GITHUB)) {
+                assertFalse("$format stderr carries a full secret", err.toString("UTF-8").contains(secret))
+            }
             assertEquals(1, code)
             val text = out.toString("UTF-8")
             if (format == "sarif") assertEquals(7, sarifResults(text).size)

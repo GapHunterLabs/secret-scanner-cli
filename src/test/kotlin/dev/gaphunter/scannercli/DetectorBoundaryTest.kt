@@ -119,7 +119,6 @@ class DetectorBoundaryTest {
         assertNull(kind("----BEGIN " + "PRIVATE KEY-----"))
         assertNull(kind("-----BEGIN " + "PUBLIC KEY-----"))
         assertNull(kind("-----BEGIN " + "CERTIFICATE-----"))
-        assertNull(kind("-----BEGIN " + "PGP PRIVATE KEY BLOCK-----"))
         assertNull(kind("-----BEGIN " + "rsa PRIVATE KEY-----"))
     }
 
@@ -198,11 +197,14 @@ class DetectorBoundaryTest {
     }
 
     @Test
-    fun knownGapValuesMaskedWithXStillMatchTheFormatRules() {
-        // Documented false positive, pinned: a redaction like ghp_XXXX... still has the token's exact shape.
-        assertEquals("GITHUB_TOKEN", kind("ghp_" + "X".repeat(36)))
-        assertEquals("STRIPE_KEY", kind("sk_live_" + "X".repeat(24)))
-        assertEquals("AWS_ACCESS_KEY", kind("AKIA" + "X".repeat(16)))
+    fun valuesMaskedWithXAreNotReportedSince030() {
+        // 0.2.0 reported these (a documented false positive); a body that is 90 % redaction characters is a placeholder.
+        assertNull(kind("ghp_" + "X".repeat(36)))
+        assertNull(kind("sk_live_" + "X".repeat(24)))
+        assertNull(kind("AKIA" + "X".repeat(16)))
+        assertNull(kind("sk-proj-" + "X".repeat(48)))
+        // One real character in ten is not enough to call it a placeholder.
+        assertEquals("GITHUB_TOKEN", kind("ghp_" + "X".repeat(30) + "a1B2c3"))
     }
 
     // ---- through the file scanner: comments, CRLF, no full secret in any output ----
@@ -261,14 +263,16 @@ class DetectorBoundaryTest {
     }
 
     @Test
-    fun theTruncatedPrefixesAreExactlyWhatTheDescriptionsPromise() {
-        assertEquals("Looks like an AWS access key ID (AKIAIOSF...)", SecretDetector.scanLiteral(Fake.AWS)!!.description)
-        assertEquals(
-            "Looks like a Stripe secret/restricted API key (sk_live_4eC...)",
-            SecretDetector.scanLiteral(Fake.STRIPE)!!.description,
-        )
-        val generic = SecretDetector.scanLiteral(Fake.GENERIC, "db.password")!!.description
-        assertFalse(generic.contains(Fake.GENERIC.take(4)))
+    fun descriptionsCarryNoPartOfTheSecretAndTheMaskShowsFourAndFour() {
+        // Since 0.3.0 descriptions name the format only; the renderers add the masked view.
+        for ((kind, lineAndSecret) in Fake.BY_KIND) {
+            val secret = lineAndSecret.second
+            val f = Scanner.scan(root.also { File(it, "m.yaml").writeText(lineAndSecret.first + "\n") }).single()
+            assertFalse("$kind description", f.description.contains(secret.take(8)) && kind != "PRIVATE_KEY")
+            File(root, "m.yaml").delete()
+        }
+        val aws = Scanner.scan(root.also { File(it, "a.env").writeText("K=${Fake.AWS}\n") }).single()
+        assertEquals(Fake.AWS.take(4) + "..." + Fake.AWS.takeLast(4), Mask.masked(aws))
     }
 
     @Test

@@ -132,13 +132,13 @@ class ExternalLinksTest {
         val (code, out, err) = run(root.path, "--format", "sarif", "--no-banner")
         assertEquals(0, code)
         assertTrue(sarifResults(out).isEmpty())
-        assertTrue(err, err.contains("skipped a link that leads outside the scanned folder: ext"))
+        assertTrue(err, err.contains("skipped 1 link(s) that lead outside the scanned folder: ext (--follow-external-links scans them)"))
         assertFalse("the warning never names the link's target", err.contains(outside.name))
 
         val (code2, out2, err2) = run(root.path, "--follow-external-links", "--no-banner")
         assertEquals(1, code2)
         assertTrue(out2.contains("ext/Leak.kt"))
-        assertFalse(err2.contains("skipped a link"))
+        assertFalse(err2.contains("link(s) that lead outside"))
     }
 
     private fun run(vararg args: String): Triple<Int, String, String> {
