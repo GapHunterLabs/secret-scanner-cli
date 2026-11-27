@@ -435,4 +435,22 @@ class CliFeaturesTest {
         val action = File(project, "action.yml").readText()
         assertTrue("file names in the log cannot run workflow commands", action.contains("::stop-commands::"))
     }
+
+    @Test
+    fun everyStoredChecksumNamesItsOwnVersionAndTheActionChecksBeforeRunning() {
+        val project = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "action.yml").isFile }
+        val sums = File(project, "checksums").listFiles { f -> f.name.endsWith(".jar.sha256") }.orEmpty()
+        assertTrue("at least the published 0.3.0 checksum", sums.isNotEmpty())
+        for (f in sums) {
+            val version = f.name.removePrefix("secret-scanner-cli-").removeSuffix(".jar.sha256")
+            assertTrue(f.name, Regex("""\d+\.\d+\.\d+""").matches(version))
+            assertTrue(f.name, Regex("""[0-9a-f]{64}  secret-scanner-cli-${Regex.escape(version)}\.jar""").matches(f.readText().trimEnd()))
+        }
+        val action = File(project, "action.yml").readText()
+        assertTrue(action.contains("sha256sum -c"))
+        assertTrue("a mismatch stops the step", action.contains("refusing to run it"))
+        val afterMismatch = action.substringAfter("refusing to run it")
+        assertTrue("a mismatch exits", afterMismatch.contains("exit 1"))
+        assertFalse("no build between the mismatch and its exit", afterMismatch.substringBefore("exit 1").contains("gradlew"))
+    }
 }

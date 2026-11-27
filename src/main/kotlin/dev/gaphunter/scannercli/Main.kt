@@ -6,7 +6,7 @@ import java.nio.file.Files
 import java.security.MessageDigest
 import kotlin.system.exitProcess
 
-internal const val VERSION = "0.3.0"
+internal const val VERSION = "0.3.1"
 
 private val FORMATS = listOf("text", "sarif", "json")
 

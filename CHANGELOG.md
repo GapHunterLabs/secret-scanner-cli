@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.1
+
+### Changed
+
+- **The GitHub Action no longer builds the tool on every run.** Used at a release tag (`@v0.3.1` or later), it
+  downloads the jar attached to that release and checks it against the SHA-256 stored in `checksums/`. A jar that
+  does not match stops the step instead of falling back to a build. Branches, commit SHAs, older tags and a failed
+  download still build from source.
+
+### Fixed
+
+- Invisible characters in the sources (bidirectional controls, line separators, byte-order marks) are written as
+  escapes, and a test keeps raw ones out. Nothing the tool does changes.
+
 ## 0.3.0
 
 ### Fixed

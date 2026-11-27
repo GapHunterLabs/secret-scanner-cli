@@ -50,15 +50,40 @@ runs:
         java-version: '21'
         cache: 'gradle'
 
-    - name: Build secret-scanner-cli
+    - name: Get secret-scanner-cli
       shell: bash
-      # Builds from this action's own source on every run rather than
-      # fetching a pre-built release jar. A release pipeline that attaches the
-      # jar to a GitHub Release (and this step downloading it) is a known follow-up.
+      # When the action is used at a release tag (`@v0.3.1`) and this tree holds
+      # that release's SHA-256 in checksums/, the jar attached to the GitHub
+      # Release is downloaded and checked against it: no Gradle build. A hash
+      # that does not match stops the step; it never falls back to a build, since
+      # a different file is exactly what the check exists to catch. Any other ref
+      # (a branch, a commit SHA, `uses: ./`), an older tag without a checksum, or
+      # a download that fails for network reasons builds from source as before.
       env:
         ACTION_PATH: ${{ github.action_path }}
+        ACTION_REF: ${{ github.action_ref }}
       run: |
+        set -eo pipefail
         cd "$ACTION_PATH"
+        mkdir -p build/libs
+        VERSION=""
+        if [[ "$ACTION_REF" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then VERSION="${BASH_REMATCH[1]}"; fi
+        SUM="checksums/secret-scanner-cli-$VERSION.jar.sha256"
+        if [ -n "$VERSION" ] && [ -f "$SUM" ]; then
+          JAR="secret-scanner-cli-$VERSION.jar"
+          URL="https://github.com/GapHunterLabs/secret-scanner-cli/releases/download/v$VERSION/$JAR"
+          if curl -fsSL --retry 3 --retry-delay 2 -o "build/libs/$JAR" "$URL"; then
+            (cd build/libs && sha256sum -c "$ACTION_PATH/$SUM") || {
+              echo "::error::the downloaded $JAR does not match $SUM; refusing to run it"
+              rm -f "build/libs/$JAR"
+              exit 1
+            }
+            echo "secret-scanner-cli: using the v$VERSION release jar (SHA-256 checked)"
+            exit 0
+          fi
+          echo "::warning::could not download the v$VERSION release jar; building from source instead"
+          rm -f "build/libs/$JAR"
+        fi
         chmod +x ./gradlew
         ./gradlew shadowJar --console=plain -q
 
