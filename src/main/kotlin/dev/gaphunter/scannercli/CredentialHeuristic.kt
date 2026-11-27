@@ -22,13 +22,6 @@ object CredentialHeuristic {
 
     private val REFERENCE = Regex("""^\s*(\$\{[^}]*}|\$[A-Za-z_][A-Za-z0-9_]*|%[^%]+%|\{\{.*}}|<[^>]*>|env:[A-Za-z_]\w*)\s*$""")
 
-    private val CREDENTIAL_KEY = Regex(
-        """(^|[_.\-\s])(api[_-]?key|access[_-]?key|private[_-]?key|secret[_-]?key|signing[_-]?key|encryption[_-]?key|""" +
-            """secret|token|password|passwd|pwd|passphrase|credentials?|authorization|auth)$|[a-z0-9](ApiKey|AccessKey|""" +
-            """PrivateKey|SecretKey|Secret|Token|Password|Passphrase|Credentials?|Authorization)$""",
-        RegexOption.IGNORE_CASE,
-    )
-
     private val AUTH_SCHEME_PREFIX = Regex("""^(Bearer|Basic|Token)\s+""", RegexOption.IGNORE_CASE)
 
     /** `--api-key=VALUE` / `-p=VALUE` command-line arguments, as CI and MCP configs pass them. */
@@ -80,15 +73,22 @@ object CredentialHeuristic {
 
     fun isReference(value: String): Boolean = REFERENCE.matches(value)
 
-    /** True for a key that names a credential (its last word is the credential noun). */
-    fun isCredentialKey(key: String): Boolean = CREDENTIAL_KEY.containsMatchIn(key.trim())
+    /**
+     * True for a key that names a credential: its last word, once environment and
+     * numbering suffixes are dropped (`API_KEY_1`, `DB_PASSWORD_PROD`, `apiKeyV2`), is
+     * the credential noun, whatever the naming convention. See [KeyName].
+     */
+    fun isCredentialKey(key: String): Boolean = KeyName.isCredentialKey(key.trim())
+
+    /** The credential's key when [value] assigned to [key] looks like a real credential, else null. */
+    fun credentialName(key: String, value: String): String? = credential(key, value)?.first
 
     /**
-     * The credential's key when [value] assigned to [key] looks like a real
-     * credential, else null. A `--flag=VALUE` value is judged by its own flag
-     * name, and an auth scheme (`Bearer `) is not part of the secret.
+     * The credential's key and the secret itself (without a `Bearer ` scheme or a
+     * `--flag=` prefix) when [value] assigned to [key] looks like a real credential.
+     * A `--flag=VALUE` value is judged by its own flag name.
      */
-    fun credentialName(key: String, value: String): String? {
+    fun credential(key: String, value: String): Pair<String, String>? {
         if (value.isBlank() || isReference(value)) return null
         var name = key
         var core = value.trim()
@@ -100,7 +100,7 @@ object CredentialHeuristic {
         if (!isCredentialKey(name)) return null
         if (isReference(core) || !looksLikeACredentialValue(core)) return null
         if (!SecretDetector.looksLikeARealSecret(core)) return null
-        return name
+        return name to core
     }
 
     /** A credential value is one token, not a sentence, path or URL, and mixes character classes. */

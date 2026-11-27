@@ -7,11 +7,11 @@ import java.util.concurrent.TimeUnit
  * Test-only secrets, always assembled at runtime from pieces so that no
  * complete provider-format token is ever committed to this public repository
  * (push protection and other scanners would rightly flag one). Every value is
- * fake: GitHub tokens fail their checksum, the AWS key is AWS's own documented
- * example key, the Stripe key is the one Stripe's public docs show.
+ * fake: GitHub tokens fail their checksum, the AWS key has the right shape but is made up
+ * (AWS's documented example key, ending in EXAMPLE, is treated as a placeholder since 0.3.0), the Stripe key is the one Stripe's public docs show.
  */
 internal object Fake {
-    val AWS = "AKIA" + "IOSFODNN7EXAMPLE"
+    val AWS = "AKIA" + "Q7LM2XV9RT4KP8WZ"
     val GITHUB = "ghp_" + "a".repeat(36)
     val SLACK = "xox" + "b-" + "1234567890-abcdefghij"
     val JWT = "eyJ" + "hbGciOiJIUzI1NiJ9" + "." + "eyJzdWIiOiJmYWtlIn0" + "." + "ZmFrZXNpZ25hdHVyZQ"

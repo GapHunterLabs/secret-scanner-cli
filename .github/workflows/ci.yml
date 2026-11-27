@@ -6,12 +6,16 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: this workflow only reads the repository.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3  # v4.9.1
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -20,9 +24,16 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew build --console=plain
+      - name: Check the jar against its own SHA-256
+        run: |
+          JAR=$(ls build/libs/secret-scanner-cli-*.jar | head -n1)
+          SHA=$(sha256sum "$JAR" | cut -d' ' -f1)
+          java -jar "$JAR" --self-sha256 | grep -q "^$SHA "
+          java -jar "$JAR" src/main --expect-sha256 "$SHA" --quiet
+          if java -jar "$JAR" src/main --expect-sha256 "$(printf '0%.0s' $(seq 64))" --quiet; then exit 1; fi
       - name: Upload build artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: test-and-build-reports
           path: |
@@ -34,16 +45,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
       - name: Scan this repo with itself
         uses: ./
         with:
           # src/main only, deliberately -- src/test is full of
-          # intentionally secret-shaped fixtures by design (that's the
-          # whole point of ScannerTest.kt), so scanning it here would
-          # flag test data, not a real leak. A real consumer's own repo
-          # doesn't have that caveat, which is why the action's default
-          # (documented in README.md) stays '.', not 'src/main'.
+          # intentionally secret-shaped fixtures by design, so scanning it
+          # here would flag test data, not a real leak. A real consumer's
+          # own repo doesn't have that caveat, which is why the action's
+          # default (documented in README.md) stays '.', not 'src/main'.
           path: 'src/main'
           fail-on-find: 'true'
           upload-sarif: 'false'

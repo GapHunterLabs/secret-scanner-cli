@@ -51,7 +51,8 @@ class PortedRulesTest {
     @Test
     fun allSixteenPortedSignaturesAreThere() {
         assertEquals(16, boundaries.size)
-        assertEquals(22 + 1, SecretDetector.KINDS.size)
+        // 22 formats through 0.2.0, ten more in 0.3.0, plus the name + entropy rule.
+        assertEquals(32 + 1, SecretDetector.KINDS.size)
         assertTrue(SecretDetector.KINDS.containsAll(boundaries.keys))
     }
 

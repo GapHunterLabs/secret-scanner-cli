@@ -86,10 +86,14 @@ class ScannerNegativeTest {
     }
 
     @Test
-    fun binaryContentWithATextExtensionDoesNotCrashAndStillFindsTextSecrets() {
+    fun binaryContentWithATextExtensionIsSkippedAndListed() {
+        // 0.2.0 read it as text. Since 0.3.0 a NUL byte in the first 8 KB means binary (git's own rule): skipped, listed.
         val bytes = ByteArray(4096) { (it * 31 % 256).toByte() }
         File(root, "blob.json").writeBytes(bytes + "\nkey = \"${Fake.AWS}\"\n".toByteArray())
-        assertEquals(listOf("AWS_ACCESS_KEY"), Scanner.scan(root).map { it.kind })
+        val stats = ScanStats()
+        assertTrue(Scanner.scanAll(listOf(root to ""), ScanOptions(), stats).isEmpty())
+        assertEquals(listOf("blob.json"), stats.binary)
+        assertEquals(0, stats.filesScanned)
     }
 
     @Test
@@ -109,11 +113,12 @@ class ScannerNegativeTest {
     }
 
     @Test
-    fun utf16FileIsAKnownBlindSpot() {
-        // Documented gap, pinned: a UTF-16 file (some Windows editors save .ps1/.json this way) is read as UTF-8,
-        // so every other byte is NUL and no rule matches.
-        File(root, "utf16.json").writeBytes("{\"token\": \"${Fake.GITHUB}\"}".toByteArray(Charsets.UTF_16LE))
-        assertTrue(Scanner.scan(root).isEmpty())
+    fun utf16WithoutAByteOrderMarkIsReadSince030() {
+        // 0.2.0 read it as UTF-8 and found nothing (a documented blind spot). NULs in every other byte mean UTF-16.
+        File(root, "le.json").writeBytes("{\"token\": \"${Fake.GITHUB}\"}".toByteArray(Charsets.UTF_16LE))
+        File(root, "be.json").writeBytes("{\"token\": \"${Fake.GITHUB}\"}".toByteArray(Charsets.UTF_16BE))
+        val hits = Scanner.scan(root).sortedBy { it.file }
+        assertEquals(listOf("be.json" to 12, "le.json" to 12), hits.map { it.file to it.column })
     }
 
     @Test
