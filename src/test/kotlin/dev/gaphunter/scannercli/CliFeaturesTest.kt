@@ -386,7 +386,7 @@ class CliFeaturesTest {
     @Test
     fun controlAndBidiCharactersNeverReachTheConsoleRaw() {
         assertEquals("a\\u001b[31mb", consoleSafe("a\u001b[31mb"))
-        assertEquals("x\\u202ey", consoleSafe("x‮y"))
+        assertEquals("x\\u202ey", consoleSafe("x\u202Ey"))
         assertEquals("tab\\u0009", consoleSafe("tab\t"))
         assertEquals("plain/path-é.env", consoleSafe("plain/path-é.env"))
         val hit = ScanHit("evil\u001b[2J\u009b.env", 1, 1, "K", "desc\u0007")
