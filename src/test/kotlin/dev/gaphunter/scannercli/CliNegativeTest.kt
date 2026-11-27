@@ -177,7 +177,7 @@ class CliNegativeTest {
     fun versionAndHelpExitZeroOnStdout() {
         val v = cli("--version")
         assertEquals(0, v.exitCode)
-        assertEquals("secret-scanner-cli 0.3.0", v.stdout.trim())
+        assertEquals("secret-scanner-cli 0.3.1", v.stdout.trim())
         val h = cli("--help")
         assertEquals(0, h.exitCode)
         assertTrue(h.stdout.contains("Usage:"))

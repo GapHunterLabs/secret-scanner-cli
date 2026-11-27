@@ -74,7 +74,7 @@ out-of-memory error, not a small slowdown.
   It also checks that workflow commands come back on after an early exit. The build step, `actions/setup-java` and the SARIF upload only
   run on GitHub.
 - **The shadow jar.** `./gradlew shadowJar` and then
-  `java -jar build/libs/secret-scanner-cli-0.3.0.jar <dir>` on a filled copy of
+  `java -jar build/libs/secret-scanner-cli-0.3.1.jar <dir>` on a filled copy of
   the demo fixture, in both formats.
 - **Mutation check.** For each fix in 0.3.0 (suffixes, the byte-order mark,
   redaction placeholders, the AWS example key, console escaping, the column of a

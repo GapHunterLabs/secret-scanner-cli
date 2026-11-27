@@ -18,7 +18,7 @@ repositories it cut the name + entropy findings from 75 to 0, 3 to 1,
 and 227 to 147 (the rest are cryptography test vectors in a vendored Go
 toolchain), while the exact-format findings stayed the same.
 
-**Status: v0.3.0.** Built as a companion channel to Gap Hunter Labs'
+**Status: v0.3.1.** Built as a companion channel to Gap Hunter Labs'
 [api-security-companion](https://github.com/GapHunterLabs/api-security-companion)
 IntelliJ plugin: its detection rules
 ([`SecretDetector.kt`](src/main/kotlin/dev/gaphunter/scannercli/SecretDetector.kt)
@@ -35,13 +35,13 @@ Requires JDK 21.
 git clone https://github.com/GapHunterLabs/secret-scanner-cli.git
 cd secret-scanner-cli
 ./gradlew shadowJar
-java -jar build/libs/secret-scanner-cli-0.3.0.jar --help
+java -jar build/libs/secret-scanner-cli-0.3.1.jar --help
 ```
 
 ## Usage
 
 ```text
-java -jar secret-scanner-cli-0.3.0.jar [path...] [options]
+java -jar secret-scanner-cli-0.3.1.jar [path...] [options]
 
   path...             Directories and/or files to scan (default: current directory)
   --format <fmt>      Output format: text (default), sarif or json
@@ -77,7 +77,7 @@ Exit codes: 0 = no findings at the --fail-on level, 1 = findings at that level,
 Example:
 
 ```text
-$ java -jar secret-scanner-cli-0.3.0.jar my-repo
+$ java -jar secret-scanner-cli-0.3.1.jar my-repo
 my-repo/.env:1:19: [AWS_ACCESS_KEY] [high] Looks like an AWS access key ID (AKIA...WZ8K)
 my-repo/tests/fixtures/app.yaml:4:13: [GENERIC_HIGH_ENTROPY] [medium] Assigned to 'API_KEY_PROD' and looks like a real credential, not a placeholder or a reference (q7Lm...3Nb6) [test-or-example]
 
@@ -207,7 +207,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
-      - uses: GapHunterLabs/secret-scanner-cli@v0.3.0
+      - uses: GapHunterLabs/secret-scanner-cli@v0.3.1
         with:
           path: '.'
 ```
@@ -215,7 +215,7 @@ jobs:
 ### Gradual adoption: fail only on exact formats, report the rest
 
 ```yaml
-      - uses: GapHunterLabs/secret-scanner-cli@v0.3.0
+      - uses: GapHunterLabs/secret-scanner-cli@v0.3.1
         with:
           fail-on: 'high'
           config: '.secret-scanner.json'
@@ -227,7 +227,7 @@ jobs:
 permissions:
   contents: read
 # ...
-      - uses: GapHunterLabs/secret-scanner-cli@v0.3.0
+      - uses: GapHunterLabs/secret-scanner-cli@v0.3.1
         with:
           fail-on-find: 'false'
           upload-sarif: 'false'
@@ -254,16 +254,17 @@ How the action is hardened:
   reports `src/Config.kt`); no absolute path is ever written.
 
 To check that the jar you run is the one you expect, pin its SHA-256 in the
-workflow: `java -jar secret-scanner-cli-0.3.0.jar --expect-sha256 <hex> .`
+workflow: `java -jar secret-scanner-cli-0.3.1.jar --expect-sha256 <hex> .`
 refuses to scan (exit 2) on any other artifact. `--self-sha256` prints it, and
 the JSON and SARIF reports record it.
 
-**Known limitation:** the action builds this project from source on every run
-rather than downloading a pre-built release jar, which costs every consumer a
-Gradle build. Publishing tagged release jars and switching the action to them is
-a follow-up, not done yet. The `self-scan` job in this repository's CI runs the
-action on every push to `main`; it finds nothing and does not upload, so the
-SARIF upload and a run that fails on findings have not run live yet.
+**How the action gets the tool:** used at a release tag (`@v0.3.1` or later),
+it downloads the jar attached to that GitHub Release and checks it against the
+SHA-256 stored in this repository (`checksums/`); a file that does not match stops
+the step, with no fallback. Used at a branch, a commit SHA or an older tag, or when
+the download fails, it builds from source with Gradle. The `self-scan` job in this
+repository's CI runs the action on every push to `main`; it finds nothing and does
+not upload, so the SARIF upload and a run that fails on findings have not run live yet.
 
 How I test the tool, including the negative, mutation and stress checks, is in
 [docs/TESTING.md](docs/TESTING.md).
