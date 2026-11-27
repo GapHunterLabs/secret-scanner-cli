@@ -1,0 +1,2 @@
+# sha256sum -c needs LF line endings in the stored checksums, on every platform
+checksums/*.sha256 text eol=lf
